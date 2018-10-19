@@ -25,6 +25,12 @@ func init() {
 		"discord_resource_channel_guild": "What guild this channel belongs to",
 		"discord_resource_channel_name":  "What to name the new channel",
 		"discord_resource_channel_type":  "What type of channel is this (text, voice, category)",
+		"discord_resource_channel_category": "What category this belongs to, if any",
+		"discord_resource_channel_topic": "Channel Topic",
+		"discord_resource_channel_nsfw": "If the channel is NSFW",
+		"discord_resource_channel_position": "The position of the channel in the left-hand listing",
+		"discord_resource_channel_bitrate": "The bitrate (in bits) of the voice channel; 8000 to 96000 (128000 for VIP servers)",
+		"discord_resource_channel_userlimit": "",
 
 		// Invite
 		"discord_resource_invite_channel":   "What channel this invite belongs to",

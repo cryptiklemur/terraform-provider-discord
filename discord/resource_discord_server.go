@@ -135,23 +135,28 @@ func resourceServerCreate(d *schema.ResourceData, m interface{}) error {
 		}
 	}
 
-
-
+	level := discordgo.VerificationLevel(d.Get("verification_level").(int))
 	params := discordgo.GuildParams{
 		DefaultMessageNotifications: d.Get("default_message_notifications").(int),
+		VerificationLevel: &level,
 	}
+	edit := false
 	if v, ok := d.GetOkExists("region"); ok {
 		params.Region = v.(string)
+		edit = true
 	}
 	if v, ok := d.GetOkExists("afk_channel_id"); ok {
 		params.AfkChannelID = v.(string)
+		edit = true
 	}
 	if v, ok := d.GetOkExists("afk_timeout"); ok {
 		params.AfkTimeout = v.(int)
+		edit = true
 	}
 	if v, ok := d.GetOkExists("icon_url"); ok {
 		img := imgbase64.FromRemote(v.(string))
 		params.Icon = img
+		edit = true
 	}
 	if v, ok := d.GetOkExists("icon_local"); ok {
 		img, err := imgbase64.FromLocal(v.(string))
@@ -161,35 +166,25 @@ func resourceServerCreate(d *schema.ResourceData, m interface{}) error {
 			return errors.New("Failed to fetch icon from: " + v.(string))
 		}
 		params.Icon = img
+		edit = true
 	}
 	if v, ok := d.GetOkExists("icon_data_uri"); ok {
 		params.Icon = v.(string)
+		edit = true
 	}
 	if v, ok := d.GetOkExists("owner_id"); ok {
 		params.OwnerID = v.(string)
+		edit = true
 	}
 
 	log.Println("[DISCORD] Setting icon to: " + params.Icon)
-	client.GuildEdit(guild.ID, params)
+	if edit {
+		client.GuildEdit(guild.ID, params)
+	}
 
 	d.SetId(guild.ID)
 
 	return nil
-}
-
-func getVerificationLevel(integer int) discordgo.VerificationLevel {
-	switch integer {
-	case 0:
-		return discordgo.VerificationLevelNone
-	case 1:
-		return discordgo.VerificationLevelLow
-	case 2:
-		return discordgo.VerificationLevelMedium
-	case 3:
-		return discordgo.VerificationLevelHigh
-	}
-
-	return discordgo.VerificationLevelNone
 }
 
 func resourceServerRead(d *schema.ResourceData, m interface{}) error {
