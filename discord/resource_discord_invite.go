@@ -10,7 +10,6 @@ func resourceDiscordInvite() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceInviteCreate,
 		Read:   resourceInviteRead,
-		Update: resourceInviteUpdate,
 		Delete: resourceInviteDelete,
 
 		Schema: map[string]*schema.Schema{
@@ -86,10 +85,6 @@ func resourceInviteRead(d *schema.ResourceData, m interface{}) error {
 		return nil
 	}
 
-	return nil
-}
-
-func resourceInviteUpdate(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
