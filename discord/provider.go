@@ -17,6 +17,8 @@ func Provider() terraform.ResourceProvider {
 
 		ResourcesMap: map[string]*schema.Resource{
 			"discord_server": resourceDiscordServer(),
+			"discord_channel": resourceDiscordChannel(),
+			"discord_invite": resourceDiscordInvite(),
 		},
 
 		ConfigureFunc: providerConfigure,
