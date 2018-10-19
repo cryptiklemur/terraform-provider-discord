@@ -1,9 +1,11 @@
 package discord
 
 import (
+	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/pkg/errors"
+	"github.com/polds/imgbase64"
 	"log"
 )
 
@@ -29,6 +31,83 @@ func resourceDiscordServer() *schema.Resource {
 				ForceNew: true,
 				Optional: true,
 				Description: descriptions["discord_resource_server_empty"],
+			},
+			"region": {
+				Type: schema.TypeString,
+				Optional: true,
+				Description: descriptions["discord_resource_server_region"],
+			},
+			"verification_level": {
+				Type: schema.TypeInt,
+				Optional: true,
+				Default: 0,
+				Description: descriptions["verification_level"],
+				ValidateFunc: func(val interface{}, key string) (warns []string, errors []error) {
+					v := val.(int)
+					if v > 3 || v < 0 {
+						errors = append(errors, fmt.Errorf("%q must be between 0 and 3 inclusive, got: %d", key, v))
+					}
+
+					return
+				},
+			},
+			"default_message_notifications": {
+				Type: schema.TypeInt,
+				Optional: true,
+				Default: 0,
+				Description: descriptions["discord_resource_server_default_message_notifications"],
+				ValidateFunc: func(val interface{}, key string) (warns []string, errors []error) {
+					v := val.(int)
+					if v != 0 && v != 1 {
+						errors = append(errors, fmt.Errorf("%q must be 0 or 1, got: %d", key, v))
+					}
+
+					return
+				},
+			},
+			"afk_channel_id": {
+				Type: schema.TypeString,
+				Optional: true,
+				Description: descriptions["discord_resource_server_afk_channel_id"],
+			},
+			"afk_timeout": {
+				Type: schema.TypeInt,
+				Optional: true,
+				Default: 300,
+				Description: descriptions["discord_resource_server_afk_timeout"],
+				ValidateFunc: func(val interface{}, key string) (warns []string, errors []error) {
+					v := val.(int)
+					if v < 0 {
+						errors = append(errors, fmt.Errorf("%q must be greater than 0, got: %d", key, v))
+					}
+
+					return
+				},
+			},
+			"icon_url": {
+				Type: schema.TypeString,
+				Optional: true,
+				Description: descriptions["discord_resource_server_icon_url"],
+			},
+			"icon_local": {
+				Type: schema.TypeString,
+				Optional: true,
+				Description: descriptions["discord_resource_server_icon_url"],
+			},
+			"icon_data_uri": {
+				Type: schema.TypeString,
+				Optional: true,
+				Description: descriptions["discord_resource_server_icon_data_uri"],
+			},
+			"icon_hash": {
+				Type: schema.TypeString,
+				Computed: true,
+				Description: descriptions["discord_resource_server_icon_hash"],
+			},
+			"owner_id": {
+				Type: schema.TypeString,
+				Optional: true,
+				Description: descriptions["discord_resource_server_owner_id"],
 			},
 		},
 	}
@@ -56,9 +135,61 @@ func resourceServerCreate(d *schema.ResourceData, m interface{}) error {
 		}
 	}
 
+
+
+	params := discordgo.GuildParams{
+		DefaultMessageNotifications: d.Get("default_message_notifications").(int),
+	}
+	if v, ok := d.GetOkExists("region"); ok {
+		params.Region = v.(string)
+	}
+	if v, ok := d.GetOkExists("afk_channel_id"); ok {
+		params.AfkChannelID = v.(string)
+	}
+	if v, ok := d.GetOkExists("afk_timeout"); ok {
+		params.AfkTimeout = v.(int)
+	}
+	if v, ok := d.GetOkExists("icon_url"); ok {
+		img := imgbase64.FromRemote(v.(string))
+		params.Icon = img
+	}
+	if v, ok := d.GetOkExists("icon_local"); ok {
+		img, err := imgbase64.FromLocal(v.(string))
+		if err != nil {
+			client.GuildDelete(guild.ID)
+
+			return errors.New("Failed to fetch icon from: " + v.(string))
+		}
+		params.Icon = img
+	}
+	if v, ok := d.GetOkExists("icon_data_uri"); ok {
+		params.Icon = v.(string)
+	}
+	if v, ok := d.GetOkExists("owner_id"); ok {
+		params.OwnerID = v.(string)
+	}
+
+	log.Println("[DISCORD] Setting icon to: " + params.Icon)
+	client.GuildEdit(guild.ID, params)
+
 	d.SetId(guild.ID)
 
 	return nil
+}
+
+func getVerificationLevel(integer int) discordgo.VerificationLevel {
+	switch integer {
+	case 0:
+		return discordgo.VerificationLevelNone
+	case 1:
+		return discordgo.VerificationLevelLow
+	case 2:
+		return discordgo.VerificationLevelMedium
+	case 3:
+		return discordgo.VerificationLevelHigh
+	}
+
+	return discordgo.VerificationLevelNone
 }
 
 func resourceServerRead(d *schema.ResourceData, m interface{}) error {
@@ -73,6 +204,12 @@ func resourceServerRead(d *schema.ResourceData, m interface{}) error {
 
 
 	d.Set("name", guild.Name)
+	d.Set("region", guild.Region)
+	d.Set("default_message_notifications", guild.DefaultMessageNotifications)
+	d.Set("afk_channel_id", guild.AfkChannelID)
+	d.Set("afk_timeout", guild.AfkTimeout)
+	d.Set("icon_hash", guild.Icon)
+	d.Set("owner_id", guild.OwnerID)
 
 	return nil
 }
@@ -80,13 +217,57 @@ func resourceServerRead(d *schema.ResourceData, m interface{}) error {
 func resourceServerUpdate(d *schema.ResourceData, m interface{}) error {
 	client := m.(*discordgo.Session)
 
+	changed := false
+	params := discordgo.GuildParams{}
+
 	if d.HasChange("name") {
-		_, err := client.GuildEdit(d.Id(), discordgo.GuildParams{Name: d.Get("name").(string)})
+		params.Name = d.Get("name").(string)
+		changed = true
+	}
+	if d.HasChange("region") {
+		params.Region = d.Get("region").(string)
+		changed = true
+	}
+	if d.HasChange("default_message_notifications") {
+		params.DefaultMessageNotifications = d.Get("default_message_notifications").(int)
+		changed = true
+	}
+	if d.HasChange("afk_channel_id") {
+		params.AfkChannelID = d.Get("afk_channel_id").(string)
+		changed = true
+	}
+	if d.HasChange("afk_timeout") {
+		params.AfkTimeout = d.Get("afk_timeout").(int)
+		changed = true
+	}
+	if d.HasChange("icon_url") {
+		img := imgbase64.FromRemote(d.Get("icon_url").(string))
+		params.Icon = img
+		changed = true
+	}
+	if d.HasChange("icon_local") {
+		img, err := imgbase64.FromLocal(d.Get("icon_local").(string))
+		if err != nil {
+			return err
+		}
+		params.Icon = img
+		changed = true
+	}
+	if d.HasChange("icon_data_uri") {
+		params.Icon = d.Get("icon_data_uri").(string)
+		changed = true
+	}
+	if d.HasChange("owner_id") {
+		params.OwnerID = d.Get("owner_id").(string)
+		changed = true
+	}
+
+	if changed {
+		_, err := client.GuildEdit(d.Id(), params)
 		if err != nil {
 			return err
 		}
 	}
-
 
 	return resourceServerRead(d, m)
 }
@@ -120,6 +301,12 @@ func resourceServerImportState(d *schema.ResourceData, m interface{}) ([]*schema
 	pData.SetId(d.Id())
 	pData.SetType("discord_server")
 	pData.Set("name", guild.Name)
+	pData.Set("region", guild.Region)
+	pData.Set("default_message_notifications", guild.DefaultMessageNotifications)
+	pData.Set("afk_channel_id", guild.AfkChannelID)
+	pData.Set("afk_timeout", guild.AfkTimeout)
+	pData.Set("icon_hash", guild.Icon)
+	pData.Set("owner_id", guild.OwnerID)
 	results = append(results, pData)
 
 	return results, nil

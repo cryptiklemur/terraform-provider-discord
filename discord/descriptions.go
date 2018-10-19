@@ -10,6 +10,16 @@ func init() {
 		// Server
 		"discord_resource_server_name":  "What to name the new server",
 		"discord_resource_server_empty": "Whether or not the server should be created with no channels",
+		"discord_resource_server_region": "Guild Voice Region",
+		"discord_resource_server_verification_level": "Verification Level: 0 - None, 1 - Low, 2 - Medium, 3 - High, 4 - Very High",
+		"discord_resource_server_default_message_notifications": "Message Notification Level: 0 - All Messages, 1 - Only Mentions",
+		"discord_resource_server_afk_channel_id": "ID For AFK Channel",
+		"discord_resource_server_afk_timeout": "AFK Timeout in Seconds",
+		"discord_resource_server_icon_url": "URL to image for the server icon",
+		"discord_resource_server_icon_local": "Local path to image for the server icon",
+		"discord_resource_server_icon_data_uri": "Base 64 encoded Data URI for server icon",
+		"discord_resource_server_icon_hash": "Server Icon Hash",
+		"discord_resource_server_owner_id": "ID of user to own the server",
 
 		// Channel
 		"discord_resource_channel_guild": "What guild this channel belongs to",

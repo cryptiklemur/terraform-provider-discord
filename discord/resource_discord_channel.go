@@ -20,10 +20,10 @@ func resourceDiscordChannel() *schema.Resource {
 				Required:    true,
 				Description: descriptions["discord_resource_channel_name"],
 			},
-			"guild": {
+			"server_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: descriptions["discord_resource_channel_guild"],
+				Description: descriptions["discord_resource_channel_server"],
 			},
 			"type": {
 				Type:     schema.TypeString,
@@ -47,15 +47,15 @@ func resourceDiscordChannel() *schema.Resource {
 func resourceChannelCreate(d *schema.ResourceData, m interface{}) error {
 	client := m.(*discordgo.Session)
 
-	guildId := d.Get("guild").(string)
-	guild, err := client.Guild(guildId)
+	serverId := d.Get("server_id").(string)
+	server, err := client.Guild(serverId)
 	if err != nil {
-		return errors.New("Guild does not exist with that ID: " + guildId)
+		return errors.New("Guild does not exist with that ID: " + serverId)
 	}
 
 	name := d.Get("name").(string)
 	channelType := d.Get("type").(string)
-	channel, err := client.GuildChannelCreate(guild.ID, name, channelType)
+	channel, err := client.GuildChannelCreate(server.ID, name, channelType)
 	if err != nil {
 		return errors.New("Failed to create a channel: " + err.Error())
 	}

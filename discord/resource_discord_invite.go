@@ -13,7 +13,7 @@ func resourceDiscordInvite() *schema.Resource {
 		Delete: resourceInviteDelete,
 
 		Schema: map[string]*schema.Schema{
-			"channel": {
+			"channel_id": {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
@@ -54,7 +54,7 @@ func resourceDiscordInvite() *schema.Resource {
 func resourceInviteCreate(d *schema.ResourceData, m interface{}) error {
 	client := m.(*discordgo.Session)
 
-	channelId := d.Get("channel").(string)
+	channelId := d.Get("channel_id").(string)
 	channel, err := client.Channel(channelId)
 	if err != nil {
 		return errors.New("Channel does not exist with that ID: " + channelId)
