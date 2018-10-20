@@ -183,6 +183,7 @@ func resourceServerCreate(d *schema.ResourceData, m interface{}) error {
 	}
 
 	d.SetId(guild.ID)
+	d.Set("owner", guild.OwnerID)
 
 	return nil
 }

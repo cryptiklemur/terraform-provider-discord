@@ -13,6 +13,9 @@ func resourceDiscordChannel() *schema.Resource {
 		Read:   resourceChannelRead,
 		Update: resourceChannelUpdate,
 		Delete: resourceChannelDelete,
+		Importer: &schema.ResourceImporter{
+			State: resourceChannelImportState,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -260,4 +263,37 @@ func resourceChannelDelete(d *schema.ResourceData, m interface{}) error {
 	_, _ = client.ChannelDelete(d.Id())
 
 	return nil
+}
+
+
+func resourceChannelImportState(d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
+	results := make([]*schema.ResourceData, 1, 1)
+	results[0] = d
+
+	client := m.(*discordgo.Session)
+	guildChannel, err := client.Channel(d.Id())
+	if err != nil {
+		return results, nil
+	}
+
+	channel := resourceDiscordChannel()
+	pData := channel.Data(nil)
+	pData.SetId(d.Id())
+	pData.SetType("discord_channel")
+
+	d.Set("guild_id", guildChannel.GuildID)
+	d.Set("type", guildChannel.Type)
+	d.Set("name", guildChannel.Name)
+	d.Set("position", guildChannel.Position)
+	d.Set("category", guildChannel.ParentID)
+	if guildChannel.Type == discordgo.ChannelTypeGuildVoice {
+		d.Set("bitrate", guildChannel.Bitrate)
+	}
+	if guildChannel.Type == discordgo.ChannelTypeGuildText {
+		d.Set("topic", guildChannel.Topic)
+		d.Set("nsfw", guildChannel.NSFW)
+	}
+	results = append(results, pData)
+
+	return results, nil
 }
