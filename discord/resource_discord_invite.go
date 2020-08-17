@@ -1,16 +1,17 @@
 package discord
 
 import (
-	"errors"
 	"github.com/bwmarrin/discordgo"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"golang.org/x/net/context"
 )
 
 func resourceDiscordInvite() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceInviteCreate,
-		Read:   resourceInviteRead,
-		Delete: resourceInviteDelete,
+		CreateContext: resourceInviteCreate,
+		ReadContext:   resourceInviteRead,
+		DeleteContext: resourceInviteDelete,
 
 		Schema: map[string]*schema.Schema{
 			"channel_id": {
@@ -51,52 +52,50 @@ func resourceDiscordInvite() *schema.Resource {
 	}
 }
 
-func resourceInviteCreate(d *schema.ResourceData, m interface{}) error {
-	client := m.(*discordgo.Session)
+func resourceInviteCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	client := m.(*Context).Client
 
-	channelId := d.Get("channel_id").(string)
-	channel, err := client.Channel(channelId)
+	_, channelId, err := parseTwoIds(d.Get("channel_id").(string))
 	if err != nil {
-		return errors.New("Channel does not exist with that ID: " + channelId)
+		return diag.Errorf("Channel does not exist with that ID: %s", d.Get("channel_id").(string))
 	}
 
-	invite, err := client.ChannelInviteCreate(channel.ID, discordgo.Invite{
+	invite, err := client.ChannelInviteCreate(channelId, discordgo.Invite{
 		MaxAge:    d.Get("max_age").(int),
 		MaxUses:   d.Get("max_uses").(int),
 		Temporary: d.Get("temporary").(bool),
 		Unique:    d.Get("unique").(bool),
 	})
 	if err != nil {
-		return errors.New("Failed to create a invite: " + err.Error())
+		return diag.Errorf("Failed to create a invite: %s", err.Error())
 	}
 
 	d.SetId(invite.Code)
 
-	return nil
+	return diags
 }
 
-func resourceInviteRead(d *schema.ResourceData, m interface{}) error {
-	client := m.(*discordgo.Session)
+func resourceInviteRead(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	client := m.(*Context).Client
 
 	_, err := client.Invite(d.Id())
 	if err != nil {
-		d.SetId("")
-
-		return nil
+		return diag.FromErr(err)
 	}
 
-	return nil
+	return diags
 }
 
-func resourceInviteDelete(d *schema.ResourceData, m interface{}) error {
-	client := m.(*discordgo.Session)
+func resourceInviteDelete(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	client := m.(*Context).Client
 
-	_, err := client.Invite(d.Id())
+	_, err := client.InviteDelete(d.Id())
 	if err != nil {
-		return nil
+		return diag.FromErr(err)
 	}
 
-	_, _ = client.InviteDelete(d.Id())
-
-	return nil
+	return diags
 }

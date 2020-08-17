@@ -3,56 +3,42 @@ package discord
 import (
 	"fmt"
 	"github.com/bwmarrin/discordgo"
-	"github.com/pkg/errors"
 	"log"
-	"time"
 )
 
 type Config struct {
 	Token string
+	ClientID string
+	Secret string
+}
+
+type Context struct {
+	Client *discordgo.Session
+	Config *Config
 }
 
 var ready = true
 
-func (c *Config) Client() (interface{}, error) {
+func (c *Config) Client() (*Context, error) {
 	var client *discordgo.Session
 
 	client, err := discordgo.New("Bot " + c.Token)
 	if err != nil {
-		fmt.Println("Error connecting to discord.", err)
+		fmt.Println("Error connecting to now.", err)
 
 		return nil, err
 	}
 
-	err = client.Open()
-	if err != nil {
-		fmt.Println("error opening connection,", err)
-
-		return nil, err
-	}
-
-	client.AddHandlerOnce(readyHandler)
-
-	i := 0
-	for true {
-		i++
-		if ready {
-			break
-		}
-
-		if i > 120 {
-			return nil, errors.New("Bot failed to connect")
-		}
-		time.Sleep(time.Second)
-	}
-
-	return client, nil
+	return &Context{
+		Client: client,
+		Config: c,
+	}, nil
 }
 
 func readyHandler(s *discordgo.Session, e *discordgo.Ready) {
 	ready = true
 
-	for _, guild := range e.Guilds {
-		log.Println("Bot is in guild: " + guild.ID + " - " + guild.Name)
+	for _, server := range e.Guilds {
+		log.Println("Bot is in server: " + server.ID + " - " + server.Name)
 	}
 }
