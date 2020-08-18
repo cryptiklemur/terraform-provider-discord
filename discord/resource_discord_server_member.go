@@ -1,7 +1,7 @@
 package discord
 
 import (
-    "fmt"
+    "github.com/andersfylling/disgord"
     "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
     "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
     "golang.org/x/net/context"
@@ -14,7 +14,7 @@ func resourceDiscordServerMember() *schema.Resource {
         UpdateContext: resourceServerMemberUpdate,
         DeleteContext: resourceServerMemberDelete,
         Importer: &schema.ResourceImporter{
-            StateContext: resourceServerMemberImportState,
+            StateContext: schema.ImportStatePassthroughContext,
         },
 
         Schema: map[string]*schema.Schema{
@@ -43,7 +43,7 @@ func resourceDiscordServerMember() *schema.Resource {
                 Elem:        &schema.Schema{Type: schema.TypeString},
                 Optional:    true,
                 Description: descriptions["discord_resource_server_member_roles"],
-                Set:           schema.HashString,
+                Set:         schema.HashString,
             },
             "in_server": {
                 Type:     schema.TypeBool,
@@ -55,10 +55,14 @@ func resourceDiscordServerMember() *schema.Resource {
 
 func resourceServerMemberCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
     var diags diag.Diagnostics
-    d.SetId(fmt.Sprintf("%s:%s", d.Get("server_id").(string), d.Get("user_id").(string)))
 
     client := m.(*Context).Client
-    _, err := getServerMember(client, d.Id())
+
+    serverId := getId(d.Get("server_id").(string))
+    userId := getId(d.Get("user_id").(string))
+
+    _, err := client.GetMember(ctx, serverId, userId)
+    d.SetId(userId.String())
     d.Set("in_server", err == nil)
 
     if err == nil {
@@ -69,11 +73,13 @@ func resourceServerMemberCreate(ctx context.Context, d *schema.ResourceData, m i
     return diags
 }
 
-func resourceServerMemberRead(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceServerMemberRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
     var diags diag.Diagnostics
     client := m.(*Context).Client
+    serverId := getId(d.Get("server_id").(string))
+    userId := getId(d.Get("user_id").(string))
 
-    u, err := getServerMember(client, d.Id())
+    member, err := client.GetMember(ctx, serverId, userId)
     d.Set("in_server", err == nil)
     if err != nil {
         d.Set("joined_at", nil)
@@ -81,20 +87,28 @@ func resourceServerMemberRead(_ context.Context, d *schema.ResourceData, m inter
         d.Set("roles", nil)
         return diags
     }
-    member := u.Member
 
     d.Set("joined_at", member.JoinedAt)
     d.Set("premium_since", member.PremiumSince)
-    d.Set("roles", member.Roles)
+
+    roles := make([]string, 0, len(member.Roles))
+    for _, r := range member.Roles {
+        roles = append(roles, r.String())
+    }
+    d.Set("roles", roles)
 
     return diags
 }
 
-func resourceServerMemberUpdate(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceServerMemberUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
     var diags diag.Diagnostics
     client := m.(*Context).Client
 
-    u, err := getServerMember(client, d.Id())
+    serverId := getId(d.Get("server_id").(string))
+    userId := getId(d.Get("user_id").(string))
+    builder := client.UpdateGuildMember(ctx, serverId, userId)
+
+    _, err := client.GetMember(ctx, serverId, userId)
     d.Set("in_server", err == nil)
     if err != nil {
         d.Set("joined_at", nil)
@@ -105,16 +119,14 @@ func resourceServerMemberUpdate(_ context.Context, d *schema.ResourceData, m int
 
     if _, v := d.GetChange("roles"); v != nil {
         items := v.(*schema.Set).List()
-        roles := make([]string, 0, len(items))
+        roles := make([]disgord.Snowflake, 0, len(items))
         for _, r := range items {
-            _, roleId, err := parseTwoIds(r.(string))
-            if err != nil {
-                return diag.Errorf("Failed to edit member. Couldn't parse role ids: %s", err.Error())
-            }
-            roles = append(roles, roleId)
+            roles = append(roles, getId(r.(string)))
         }
 
-        err := client.GuildMemberEdit(u.ServerId, u.UserId, roles)
+        builder.SetRoles(roles)
+
+        err = builder.Execute()
         if err != nil {
             return diag.Errorf("Failed to edit member: %s", err.Error())
         }
@@ -123,45 +135,16 @@ func resourceServerMemberUpdate(_ context.Context, d *schema.ResourceData, m int
     return diags
 }
 
-func resourceServerMemberDelete(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceServerMemberDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
     var diags diag.Diagnostics
     client := m.(*Context).Client
+    serverId := getId(d.Get("server_id").(string))
+    userId := getId(d.Get("user_id").(string))
 
-    u, err := getServerMember(client, d.Id())
-    if err != nil {
-        return diag.Errorf("Failed to fetch server member %s: %s", d.Id(), err.Error())
-    }
-
-    err = client.GuildMemberDelete(u.ServerId, u.UserId)
+    err := client.KickMember(ctx, serverId, userId, "Removed via Terraform")
     if err != nil {
         return diag.Errorf("Failed to remove member from the server: %s", err.Error())
     }
 
     return diags
-}
-
-func resourceServerMemberImportState(_ context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
-    results := make([]*schema.ResourceData, 1, 1)
-    results[0] = d
-
-    client := m.(*Context).Client
-    u, err := getServerMember(client, d.Id())
-    if err != nil {
-        return nil, err
-    }
-
-    d.Set("server_id", u.ServerId)
-    d.Set("user_id", u.UserId)
-
-    member := resourceDiscordServerMember()
-
-    pData := member.Data(nil)
-    pData.SetId(d.Id())
-    pData.SetType("discord_server_member")
-    d.Set("joined_at", u.Member.JoinedAt)
-    d.Set("premium_since", u.Member.PremiumSince)
-    d.Set("roles", u.Member.Roles)
-    results = append(results, pData)
-
-    return results, nil
 }

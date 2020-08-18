@@ -1,29 +1,31 @@
 package discord
 
 import (
-    "github.com/bwmarrin/discordgo"
+    "context"
+    "github.com/andersfylling/disgord"
+    "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 )
 
 type Role struct {
-    ServerId string
-    RoleId string
-    Role *discordgo.Role
+    ServerId disgord.Snowflake
+    RoleId disgord.Snowflake
+    Role *disgord.Role
 }
 
-func insertRole(array []*discordgo.Role, value *discordgo.Role, index int) []*discordgo.Role {
-    return append(array[:index], append([]*discordgo.Role{value}, array[index:]...)...)
+func insertRole(array []*disgord.Role, value *disgord.Role, index int) []*disgord.Role {
+    return append(array[:index], append([]*disgord.Role{value}, array[index:]...)...)
 }
 
-func removeRole(array []*discordgo.Role, index int) []*discordgo.Role {
+func removeRole(array []*disgord.Role, index int) []*disgord.Role {
     return append(array[:index], array[index+1:]...)
 }
 
-func moveRole(array []*discordgo.Role, srcIndex int, dstIndex int) []*discordgo.Role {
+func moveRole(array []*disgord.Role, srcIndex int, dstIndex int) []*disgord.Role {
     value := array[srcIndex]
     return insertRole(removeRole(array, srcIndex), value, dstIndex)
 }
 
-func findRoleIndex(array []*discordgo.Role, value *discordgo.Role) (int, bool) {
+func findRoleIndex(array []*disgord.Role, value *disgord.Role) (int, bool) {
     for index, element := range array {
         if element.ID == value.ID {
             return index, true
@@ -33,7 +35,7 @@ func findRoleIndex(array []*discordgo.Role, value *discordgo.Role) (int, bool) {
     return -1, false
 }
 
-func findRoleById(array []*discordgo.Role, id string) *discordgo.Role {
+func findRoleById(array []*disgord.Role, id disgord.Snowflake) *disgord.Role {
     for _, element := range array {
         if element.ID == id {
             return element
@@ -43,22 +45,40 @@ func findRoleById(array []*discordgo.Role, id string) *discordgo.Role {
     return nil
 }
 
-func getRole(client *discordgo.Session, combinedId string) (*Role, error) {
-    var c Role
+func reorderRoles(ctx context.Context, m interface{}, serverId disgord.Snowflake, role *disgord.Role, position int) (bool, diag.Diagnostics) {
+    client := m.(*Context).Client
 
-    serverId, roleId, err := parseTwoIds(combinedId)
+    roles, err := client.GetGuildRoles(ctx, serverId)
+    if err != nil {
+        return false, diag.Errorf("Failed to fetch roles: %s", err.Error())
+    }
+    index, exists := findRoleIndex(roles, role)
+    if !exists {
+        return false, diag.Errorf("Role somehow does not exists",)
+    }
+
+    moveRole(roles, index, position)
+
+    params := make([]disgord.UpdateGuildRolePositionsParams, 0, len(roles))
+    for index, r := range roles {
+        params = append(params, disgord.UpdateGuildRolePositionsParams{ID: r.ID, Position: index})
+    }
+
+    roles, err = client.UpdateGuildRolePositions(ctx, serverId, params)
+    if err != nil {
+        return false, diag.Errorf("Failed to re-order roles: %s", err.Error())
+    }
+
+    return true, nil
+}
+
+func getRole(ctx context.Context, client *disgord.Client, serverId disgord.Snowflake, roleId disgord.Snowflake) (*disgord.Role, error) {
+    roles, err := client.GetGuildRoles(ctx, serverId)
     if err != nil {
         return nil, err
     }
 
-    roles, err := client.GuildRoles(serverId)
-    if err != nil {
-        return nil, err
-    }
+    role := findRoleById(roles, roleId)
 
-    c.ServerId = serverId
-    c.RoleId = roleId
-    c.Role = findRoleById(roles, roleId)
-
-    return &c, nil
+    return role, nil
 }

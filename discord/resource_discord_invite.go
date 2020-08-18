@@ -1,7 +1,7 @@
 package discord
 
 import (
-	"github.com/bwmarrin/discordgo"
+	"github.com/andersfylling/disgord"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"golang.org/x/net/context"
@@ -12,6 +12,9 @@ func resourceDiscordInvite() *schema.Resource {
 		CreateContext: resourceInviteCreate,
 		ReadContext:   resourceInviteRead,
 		DeleteContext: resourceInviteDelete,
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"channel_id": {
@@ -56,12 +59,9 @@ func resourceInviteCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	var diags diag.Diagnostics
 	client := m.(*Context).Client
 
-	_, channelId, err := parseTwoIds(d.Get("channel_id").(string))
-	if err != nil {
-		return diag.Errorf("Channel does not exist with that ID: %s", d.Get("channel_id").(string))
-	}
+	channelId := getId(d.Get("channel_id").(string))
 
-	invite, err := client.ChannelInviteCreate(channelId, discordgo.Invite{
+	invite, err := client.CreateChannelInvites(ctx, channelId, &disgord.CreateChannelInvitesParams{
 		MaxAge:    d.Get("max_age").(int),
 		MaxUses:   d.Get("max_uses").(int),
 		Temporary: d.Get("temporary").(bool),
@@ -76,11 +76,11 @@ func resourceInviteCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	return diags
 }
 
-func resourceInviteRead(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceInviteRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := m.(*Context).Client
 
-	_, err := client.Invite(d.Id())
+	_, err := client.GetInvite(ctx, d.Id(), nil)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -88,11 +88,11 @@ func resourceInviteRead(_ context.Context, d *schema.ResourceData, m interface{}
 	return diags
 }
 
-func resourceInviteDelete(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceInviteDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := m.(*Context).Client
 
-	_, err := client.InviteDelete(d.Id())
+	_, err := client.DeleteInvite(ctx, d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}

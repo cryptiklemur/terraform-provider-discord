@@ -16,20 +16,23 @@ func init() {
         // Server
         "discord_resource_server_id":                            "ID of the server",
         "discord_resource_server_name":                          "What to name the new server",
-        "discord_resource_server_empty":                         "Whether or not the server should be created with no channels",
         "discord_resource_server_region":                        "Guild Voice Region",
         "discord_resource_server_verification_level":            "Verification Level: 0 - None, 1 - Low, 2 - Medium, 3 - High, 4 - Very High",
+        "discord_resource_server_explicit_content_filter":       "Explicit Media Content Filter Level: 0 - None, 1 - Non-Roled Members, 2 - All Members",
         "discord_resource_server_default_message_notifications": "Message Notification Level: 0 - All Messages, 1 - Only Mentions",
         "discord_resource_server_afk_channel_id":                "ID For AFK Channel",
         "discord_resource_server_afk_timeout":                   "AFK Timeout in Seconds",
         "discord_resource_server_icon_url":                      "URL to image for the server icon",
-        "discord_resource_server_icon_local":                    "Local path to image for the server icon",
         "discord_resource_server_icon_data_uri":                 "Base 64 encoded Data URI for server icon",
-        "discord_resource_server_icon_hash":                     "Server Icon Hash",
+        "discord_resource_server_icon_hash":                     "Server icon hash",
+        "discord_resource_server_splash_url":                    "URL to image for the server splash",
+        "discord_resource_server_splash_data_uri":               "Base 64 encoded Data URI for server splash",
+        "discord_resource_server_splash_hash":                   "Server splash hash",
         "discord_resource_server_owner_id":                      "ID of user to own the server",
+        "discord_resource_server_system_channel_id":             "ID of channel to send system messages to",
 
         // Channel
-        "discord_resource_channel_server":     "What server this channel belongs to",
+        "discord_resource_channel_server":    "What server this channel belongs to",
         "discord_resource_channel_name":      "What to name the new channel",
         "discord_resource_channel_type":      "What type of channel is this (text, voice, category)",
         "discord_resource_channel_category":  "What category this belongs to, if any",
@@ -47,7 +50,6 @@ func init() {
         "discord_resource_invite_unique":    "if true, don't try to reuse a similar invite (useful for creating many unique one time use invites)",
 
         // Role
-        "discord_resource_role_id":          "ID of the role",
         "discord_resource_role_server":      "ID of the server",
         "discord_resource_role_name":        "Name of the role",
         "discord_resource_role_permissions": "Bitwise value of the enabled/disabled permissions",
