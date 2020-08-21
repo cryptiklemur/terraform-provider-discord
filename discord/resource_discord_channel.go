@@ -141,12 +141,14 @@ func resourceChannelCreate(ctx context.Context, d *schema.ResourceData, m interf
     channel, err := client.CreateGuildChannel(ctx, serverId, d.Get("name").(string), &disgord.CreateGuildChannelParams{
         Type:      channelType,
         Topic:     d.Get("topic").(string),
-        Bitrate:   d.Get("bitrate").(uint),
-        UserLimit: d.Get("user_limit").(uint),
+        Bitrate:   uint(d.Get("bitrate").(int)),
+        UserLimit: uint(d.Get("user_limit").(int)),
         ParentID:  getId(d.Get("category").(string)),
         NSFW:      d.Get("nsfw").(bool),
         Position:  d.Get("position").(int),
     })
+
+    channel.PermissionOverwrites[0].Allow
 
     if err != nil {
         return diag.Errorf("Failed to create channel: %s", err.Error())

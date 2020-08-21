@@ -157,8 +157,8 @@ func resourceServerCreate(ctx context.Context, d *schema.ResourceData, m interfa
         Region:                  d.Get("region").(string),
         Icon:                    icon,
         VerificationLvl:         d.Get("verification_level").(int),
-        DefaultMsgNotifications: d.Get("default_message_notifications").(disgord.DefaultMessageNotificationLvl),
-        ExplicitContentFilter:   d.Get("explicit_content_filter").(disgord.ExplicitContentFilterLvl),
+        DefaultMsgNotifications: disgord.DefaultMessageNotificationLvl(d.Get("default_message_notifications").(int)),
+        ExplicitContentFilter:   disgord.ExplicitContentFilterLvl(d.Get("explicit_content_filter").(int)),
         Channels:                nil,
     })
     if err != nil {
@@ -306,7 +306,12 @@ func resourceServerUpdate(ctx context.Context, d *schema.ResourceData, m interfa
         edit = true
     }
     if d.HasChange("system_channel_id") {
-        builder.SetSystemChannelID(disgord.ParseSnowflakeString(d.Get("system_channel_id").(string)))
+        id := d.Get("system_channel_id").(string)
+        if id != "" {
+            builder.SetSystemChannelID(disgord.ParseSnowflakeString(id))
+        } else {
+            builder.SetSystemChannelID(disgord.Snowflake(0))
+        }
         edit = true
     }
     if d.HasChange("verification_level") {

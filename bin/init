@@ -2,5 +2,5 @@
 
 set -euxo pipefail
 
-go build -o terraform-provider-discord
+./bin/build
 terraform init

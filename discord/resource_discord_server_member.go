@@ -88,8 +88,8 @@ func resourceServerMemberRead(ctx context.Context, d *schema.ResourceData, m int
         return diags
     }
 
-    d.Set("joined_at", member.JoinedAt)
-    d.Set("premium_since", member.PremiumSince)
+    d.Set("joined_at", member.JoinedAt.String())
+    d.Set("premium_since", member.PremiumSince.String())
 
     roles := make([]string, 0, len(member.Roles))
     for _, r := range member.Roles {

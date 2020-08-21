@@ -27,11 +27,12 @@ func Provider() *schema.Provider {
         },
 
         ResourcesMap: map[string]*schema.Resource{
-            "discord_server":       resourceDiscordServer(),
-            "discord_channel":      resourceDiscordChannel(),
-            "discord_invite":       resourceDiscordInvite(),
-            "discord_role":         resourceDiscordRole(),
+            "discord_server":        resourceDiscordServer(),
+            "discord_channel":       resourceDiscordChannel(),
+            "discord_invite":        resourceDiscordInvite(),
+            "discord_role":          resourceDiscordRole(),
             "discord_server_member": resourceDiscordServerMember(),
+            "discord_message":       resourceDiscordMessage(),
         },
 
         DataSourcesMap: map[string]*schema.Resource{

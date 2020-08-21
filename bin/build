@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -euxo pipefail
+
+go build -o terraform-provider-discord
+cp terraform-provider-discord ~/.terraform.d/plugins/
