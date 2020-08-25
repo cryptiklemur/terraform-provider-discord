@@ -44,7 +44,6 @@ func resourceDiscordMemberRoles() *schema.Resource {
             },
             "role": {
                 Type: schema.TypeSet,
-                Set: schema.HashString,
                 Required: true,
                 Elem: &schema.Resource{
                     Schema: map[string]*schema.Schema{
