@@ -16,10 +16,8 @@ require (
 	github.com/polds/imgbase64 v0.0.0-20140820003345-cb7bf37298b7
 	github.com/stretchr/testify v1.5.1 // indirect
 	github.com/zclconf/go-cty v1.5.1 // indirect
-	go.uber.org/multierr v1.1.0 // indirect
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/go-playground/colors.v1 v1.2.0
-	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
