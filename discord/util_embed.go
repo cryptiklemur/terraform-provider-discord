@@ -105,8 +105,8 @@ func buildEmbed(embedList []interface{}) (*disgord.Embed, error) {
     return embed, nil
 }
 
-func unbuildEmbed(embed *disgord.Embed) []interface {} {
-    var ret interface {}
+func unbuildEmbed(embed *disgord.Embed) []interface{} {
+    var ret interface{}
 
     var timestamp string
     if !embed.Timestamp.IsZero() {

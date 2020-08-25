@@ -2,90 +2,65 @@ package discord
 
 import (
     "errors"
-    "fmt"
     "github.com/andersfylling/disgord"
+    "github.com/hashicorp/go-cty/cty"
     "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
     "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
     "golang.org/x/net/context"
+    "log"
     "strings"
 )
 
-func resourceDiscordChannel() *schema.Resource {
-    return &schema.Resource{
-        CreateContext: resourceChannelCreate,
-        ReadContext:   resourceChannelRead,
-        UpdateContext: resourceChannelUpdate,
-        DeleteContext: resourceChannelDelete,
-        Importer: &schema.ResourceImporter{
-            StateContext: schema.ImportStatePassthroughContext,
+func getChannelSchema(channelType string, s map[string]*schema.Schema) map[string]*schema.Schema {
+    addedSchema := map[string]*schema.Schema{
+        "server_id": {
+            Type:     schema.TypeString,
+            Required: true,
         },
+        "type": {
+            Type:     schema.TypeString,
+            Required: true,
+            ValidateDiagFunc: func(i interface{}, path cty.Path) (diags diag.Diagnostics) {
+                if i.(string) != channelType {
+                    diags = append(diags, diag.Errorf("type must be %s, %s passed", channelType, i.(string))...)
+                }
 
-        Schema: map[string]*schema.Schema{
-            "channel_id": {
-                Type:        schema.TypeString,
-                Computed:    true,
-                Description: descriptions["discord_resource_channel_id"],
+                return diags
             },
-            "name": {
-                Type:        schema.TypeString,
-                Required:    true,
-                Description: descriptions["discord_resource_channel_name"],
+            DefaultFunc: func() (interface{}, error) {
+                return channelType, nil
             },
-            "server_id": {
-                Type:        schema.TypeString,
-                Required:    true,
-                Description: descriptions["discord_resource_channel_server"],
-            },
-            "category": {
-                Type:        schema.TypeString,
-                Optional:    true,
-                Description: descriptions["discord_resource_channel_category"],
-            },
-            "type": {
-                Type:     schema.TypeString,
-                Default:  "text",
-                Optional: true,
-                ForceNew: true,
-                ValidateFunc: func(val interface{}, key string) (warns []string, errors []error) {
-                    v := val.(string)
-
-                    if _, ok := getDiscordChannelType(v); !ok {
-                        errors = append(errors, fmt.Errorf("%q must be one of: text, voice, category, got: %d", key, v))
-                    }
-
-                    return
-                },
-                Description: descriptions["discord_resource_channel_type"],
-            },
-            "topic": {
-                Type:        schema.TypeString,
-                Optional:    true,
-                Default:     "",
-                Description: descriptions["discord_resource_channel_topic"],
-            },
-            "nsfw": {
-                Type:        schema.TypeBool,
-                Optional:    true,
-                Description: descriptions["discord_resource_channel_nsfw"],
-            },
-            "position": {
-                Type:        schema.TypeInt,
-                Default:     1,
-                Optional:    true,
-                Description: descriptions["discord_resource_channel_position"],
-            },
-            "bitrate": {
-                Type:        schema.TypeInt,
-                Optional:    true,
-                Description: descriptions["discord_resource_channel_bitrate"],
-            },
-            "user_limit": {
-                Type:        schema.TypeInt,
-                Optional:    true,
-                Description: descriptions["discord_resource_channel_userlimit"],
-            },
+        },
+        "name": {
+            Type:     schema.TypeString,
+            Required: true,
+        },
+        "position": {
+            Type:     schema.TypeInt,
+            Default:  1,
+            Optional: true,
         },
     }
+
+    if channelType != "category" {
+        addedSchema["category"] = &schema.Schema{
+            Type:     schema.TypeString,
+            Optional: true,
+        }
+        addedSchema["sync_perms_with_category"] = &schema.Schema{
+            Type:     schema.TypeBool,
+            Optional: true,
+            Default:  true,
+        }
+    }
+
+    if s != nil {
+        for k, v := range s {
+            addedSchema[k] = v
+        }
+    }
+
+    return addedSchema
 }
 
 func validateChannel(d *schema.ResourceData) (bool, error) {
@@ -136,19 +111,46 @@ func resourceChannelCreate(ctx context.Context, d *schema.ResourceData, m interf
     }
 
     serverId := getMajorId(d.Get("server_id"))
-    channelType, _ := getDiscordChannelType(d.Get("type").(string))
+    channelType := d.Get("type").(string)
+    channelTypeInt, _ := getDiscordChannelType(channelType)
+
+    var topic string
+    var bitrate uint
+    var userlimit uint
+    var nsfw bool
+    var parentId disgord.Snowflake
+
+    if channelType == "text" {
+        if v, ok := d.GetOk("topic"); ok {
+            topic = v.(string)
+        }
+        if v, ok := d.GetOk("nsfw"); ok {
+            nsfw = v.(bool)
+        }
+    } else if channelType == "voice" {
+        if v, ok := d.GetOk("bitrate"); ok {
+            bitrate = uint(v.(int))
+        }
+        if v, ok := d.GetOk("userlimit"); ok {
+            userlimit = uint(v.(int))
+        }
+    }
+
+    if channelType != "category" {
+        if v, ok := d.GetOk("category"); ok {
+            parentId = getId(v.(string))
+        }
+    }
 
     channel, err := client.CreateGuildChannel(ctx, serverId, d.Get("name").(string), &disgord.CreateGuildChannelParams{
-        Type:      channelType,
-        Topic:     d.Get("topic").(string),
-        Bitrate:   uint(d.Get("bitrate").(int)),
-        UserLimit: uint(d.Get("user_limit").(int)),
-        ParentID:  getId(d.Get("category").(string)),
-        NSFW:      d.Get("nsfw").(bool),
+        Type:     channelTypeInt,
+        Topic:     topic,
+        Bitrate:   bitrate,
+        UserLimit: userlimit,
+        ParentID:  parentId,
+        NSFW:      nsfw,
         Position:  d.Get("position").(int),
     })
-
-    channel.PermissionOverwrites[0].Allow
 
     if err != nil {
         return diag.Errorf("Failed to create channel: %s", err.Error())
@@ -157,6 +159,22 @@ func resourceChannelCreate(ctx context.Context, d *schema.ResourceData, m interf
     d.SetId(channel.ID.String())
     d.Set("server_id", serverId)
     d.Set("channel_id", channel.ID.String())
+
+    if channelType != "category" {
+        if v, ok := d.GetOk("sync_perms_with_category"); ok && v.(bool) {
+            if channel.ParentID.IsZero() {
+                return append(diags, diag.Errorf("Can't sync permissions with category. Channel (%s) doesn't have a category", channel.ID.String())...)
+            }
+            parent, err := client.GetChannel(ctx, channel.ParentID)
+            if err != nil {
+                return append(diags, diag.Errorf("Can't sync permissions with category. Channel (%s) doesn't have a category", channel.ID.String())...)
+            }
+
+            if err = syncChannelPermissions(client, ctx, parent, channel); err != nil {
+                return append(diags, diag.Errorf("Can't sync permissions with category: %s", channel.ID.String(), err.Error())...)
+            }
+        }
+    }
 
     return diags
 }
@@ -182,10 +200,24 @@ func resourceChannelRead(ctx context.Context, d *schema.ResourceData, m interfac
     if channelType == "text" {
         d.Set("topic", channel.Topic)
         d.Set("nsfw", channel.NSFW)
+    } else if channelType == "voice" {
+        d.Set("bitrate", channel.Bitrate)
+        d.Set("userlimit", channel.UserLimit)
     }
 
-    if channelType == "voice" {
-        d.Set("bitrate", channel.Bitrate)
+    if channelType != "category" {
+        if !channel.ParentID.IsZero() {
+            parent, err := client.GetChannel(ctx, channel.ParentID)
+            if err != nil {
+                return diag.Errorf("Failed to fetch category of channel %s: %s", channel.ID.String(), err.Error())
+            }
+
+            synced := arePermissionsSynced(channel, parent)
+            log.Printf("Are permissions synced between %s and %s: %s", channel.Name, parent.Name, synced)
+            d.Set("sync_perms_with_category", synced)
+        } else {
+            d.Set("sync_perms_with_category", false)
+        }
     }
 
     if !channel.ParentID.IsZero() {
@@ -210,22 +242,26 @@ func resourceChannelUpdate(ctx context.Context, d *schema.ResourceData, m interf
     if d.HasChange("name") {
         builder.SetName(d.Get("name").(string))
     }
-    if d.HasChange("topic") && channelType == "text" {
-        builder.SetTopic(d.Get("topic").(string))
-    }
-    if d.HasChange("nsfw") && channelType == "text" {
-        builder.SetNsfw(d.Get("nsfw").(bool))
-    }
-    if _, v := d.GetChange("bitrate"); v.(int) > 0 && channelType == "voice" {
-        builder.SetBitrate(uint(d.Get("bitrate").(int)))
-    }
-    if d.HasChange("user_limit") && channelType == "voice" {
-        builder.SetUserLimit(uint(d.Get("user_limit").(int)))
-    }
     if d.HasChange("position") {
         builder.SetPosition(d.Get("position").(int))
     }
-    if d.HasChange("category") {
+
+    if channelType == "text" {
+        if d.HasChange("topic") {
+            builder.SetTopic(d.Get("topic").(string))
+        }
+        if d.HasChange("nsfw") {
+            builder.SetNsfw(d.Get("nsfw").(bool))
+        }
+    } else if channelType == "voice" {
+        if d.HasChange("bitrate") {
+            builder.SetBitrate(uint(d.Get("bitrate").(int)))
+        }
+        if d.HasChange("user_limit") {
+            builder.SetUserLimit(uint(d.Get("user_limit").(int)))
+        }
+    }
+    if channelType != "category" && d.HasChange("category") {
         if d.Get("category").(string) != "" {
             builder.SetParentID(getId(d.Get("category").(string)))
         } else {
@@ -233,9 +269,25 @@ func resourceChannelUpdate(ctx context.Context, d *schema.ResourceData, m interf
         }
     }
 
-    _, err := builder.Execute()
+    channel, err := builder.Execute()
     if err != nil {
         return diag.Errorf("Failed to update channel %s: %s", d.Id(), err.Error())
+    }
+
+    if channelType != "category" {
+        if v, ok := d.GetOk("sync_perms_with_category"); ok && v.(bool) {
+            if channel.ParentID.IsZero() {
+                return append(diags, diag.Errorf("Can't sync permissions with category. Channel (%s) doesn't have a category", channel.ID.String())...)
+            }
+            parent, err := client.GetChannel(ctx, channel.ParentID)
+            if err != nil {
+                return append(diags, diag.Errorf("Can't sync permissions with category. Channel (%s) doesn't have a category", channel.ID.String())...)
+            }
+
+            if err = syncChannelPermissions(client, ctx, parent, channel); err != nil {
+                return append(diags, diag.Errorf("Can't sync permissions with category: %s", channel.ID.String(), err.Error())...)
+            }
+        }
     }
 
     return diags

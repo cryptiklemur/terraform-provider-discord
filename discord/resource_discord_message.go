@@ -1,11 +1,13 @@
 package discord
 
 import (
-    context2 "context"
     "github.com/andersfylling/disgord"
     "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
     "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
     "golang.org/x/net/context"
+    "log"
+    "os"
+    "strings"
     "time"
 )
 
@@ -25,7 +27,7 @@ func resourceDiscordMessage() *schema.Resource {
                 Required: true,
                 ForceNew: true,
             },
-            "guild_id": {
+            "server_id": {
                 Type:     schema.TypeString,
                 Computed: true,
             },
@@ -34,8 +36,12 @@ func resourceDiscordMessage() *schema.Resource {
                 Computed: true,
             },
             "content": {
-                Type:     schema.TypeString,
-                Optional: true,
+                AtLeastOneOf: []string{"content", "embed"},
+                Type:         schema.TypeString,
+                Optional:     true,
+                DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+                    return old == strings.TrimSuffix(new, "\r\n")
+                },
             },
             "timestamp": {
                 Type:     schema.TypeString,
@@ -52,9 +58,10 @@ func resourceDiscordMessage() *schema.Resource {
                 Default:  false,
             },
             "embed": {
-                Type:     schema.TypeList,
-                Optional: true,
-                MaxItems: 1,
+                AtLeastOneOf: []string{"content", "embed"},
+                Type:         schema.TypeList,
+                Optional:     true,
+                MaxItems:     1,
                 Elem: &schema.Resource{
                     Schema: map[string]*schema.Schema{
                         "title": {
@@ -271,9 +278,13 @@ func resourceMessageCreate(ctx context.Context, d *schema.ResourceData, m interf
     d.Set("type", int(message.Type))
     d.Set("timestamp", message.Timestamp.Format(time.RFC3339))
     d.Set("author", message.Author.ID.String())
-    d.Set("embed", unbuildEmbed(message.Embeds[0]))
+    if len(message.Embeds) > 0 {
+        d.Set("embed", unbuildEmbed(message.Embeds[0]))
+    } else {
+        d.Set("embed", nil)
+    }
     if !message.GuildID.IsZero() {
-        d.Set("guild_id", message.GuildID.String())
+        d.Set("server_id", message.GuildID.String())
     }
 
     if d.Get("pinned").(bool) {
@@ -298,7 +309,7 @@ func resourceMessageRead(ctx context.Context, d *schema.ResourceData, m interfac
     }
 
     if !message.GuildID.IsZero() {
-        d.Set("guild_id", message.GuildID.String())
+        d.Set("server_id", message.GuildID.String())
     }
     d.Set("type", int(message.Type))
     d.Set("tts", message.Tts)
@@ -315,7 +326,16 @@ func resourceMessageRead(ctx context.Context, d *schema.ResourceData, m interfac
     return diags
 }
 
-func resourceMessageUpdate(ctx context2.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceMessageUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+    f, err := os.OpenFile("text.log",
+        os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+    if err != nil {
+        log.Println(err)
+    }
+    defer f.Close()
+
+    logger := log.New(f, "", log.LstdFlags)
+
     var diags diag.Diagnostics
     client := m.(*Context).Client
 
@@ -324,6 +344,9 @@ func resourceMessageUpdate(ctx context2.Context, d *schema.ResourceData, m inter
     builder := client.UpdateMessage(ctx, channelId, messageId)
 
     if d.HasChange("content") {
+        message, _ := client.GetMessage(ctx, channelId, messageId)
+        logger.Printf("old: %#v\n\n", message.Content)
+        logger.Printf("new: %#v\n\n", d.Get("content").(string))
         builder.SetContent(d.Get("content").(string))
     }
     if d.HasChange("embed") {
@@ -346,7 +369,12 @@ func resourceMessageUpdate(ctx context2.Context, d *schema.ResourceData, m inter
         return diag.Errorf("Failed to update message %s in %s: %s", channelId.String(), messageId.String(), err.Error())
     }
 
-    d.Set("embed", unbuildEmbed(message.Embeds[0]))
+    if len(message.Embeds) > 0 {
+        d.Set("embed", unbuildEmbed(message.Embeds[0]))
+    } else {
+        d.Set("embed", nil)
+    }
+
     d.Set("edited_timestamp", message.EditedTimestamp.Format(time.RFC3339))
 
     return diags

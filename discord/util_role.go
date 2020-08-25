@@ -3,13 +3,15 @@ package discord
 import (
     "context"
     "github.com/andersfylling/disgord"
+    "github.com/davecgh/go-spew/spew"
     "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+    "log"
 )
 
 type Role struct {
     ServerId disgord.Snowflake
-    RoleId disgord.Snowflake
-    Role *disgord.Role
+    RoleId   disgord.Snowflake
+    Role     *disgord.Role
 }
 
 func insertRole(array []*disgord.Role, value *disgord.Role, index int) []*disgord.Role {
@@ -18,6 +20,17 @@ func insertRole(array []*disgord.Role, value *disgord.Role, index int) []*disgor
 
 func removeRole(array []*disgord.Role, index int) []*disgord.Role {
     return append(array[:index], array[index+1:]...)
+}
+
+func removeRoleById(array []disgord.Snowflake, id disgord.Snowflake) []disgord.Snowflake {
+    roles := make([]disgord.Snowflake, 0, len(array))
+    for _, x := range array {
+        if x != id {
+            roles = append(roles, x)
+        }
+    }
+
+    return roles
 }
 
 func moveRole(array []*disgord.Role, srcIndex int, dstIndex int) []*disgord.Role {
@@ -54,7 +67,7 @@ func reorderRoles(ctx context.Context, m interface{}, serverId disgord.Snowflake
     }
     index, exists := findRoleIndex(roles, role)
     if !exists {
-        return false, diag.Errorf("Role somehow does not exists",)
+        return false, diag.Errorf("Role somehow does not exists")
     }
 
     moveRole(roles, index, position)
@@ -63,6 +76,8 @@ func reorderRoles(ctx context.Context, m interface{}, serverId disgord.Snowflake
     for index, r := range roles {
         params = append(params, disgord.UpdateGuildRolePositionsParams{ID: r.ID, Position: index})
     }
+
+    log.Print(spew.Sdump(params))
 
     roles, err = client.UpdateGuildRolePositions(ctx, serverId, params)
     if err != nil {

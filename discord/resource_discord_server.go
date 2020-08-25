@@ -21,25 +21,21 @@ func resourceDiscordServer() *schema.Resource {
 
         Schema: map[string]*schema.Schema{
             "server_id": {
-                Type:        schema.TypeString,
-                Computed:    true,
-                Description: descriptions["discord_resource_server_id"],
+                Type:     schema.TypeString,
+                Computed: true,
             },
             "name": {
-                Type:        schema.TypeString,
-                Required:    true,
-                Description: descriptions["discord_resource_server_name"],
+                Type:     schema.TypeString,
+                Required: true,
             },
             "region": {
-                Type:        schema.TypeString,
-                Optional:    true,
-                Description: descriptions["discord_resource_server_region"],
+                Type:     schema.TypeString,
+                Optional: true,
             },
             "verification_level": {
-                Type:        schema.TypeInt,
-                Optional:    true,
-                Default:     0,
-                Description: descriptions["discord_resource_server_verification_level"],
+                Type:     schema.TypeInt,
+                Optional: true,
+                Default:  0,
                 ValidateFunc: func(val interface{}, key string) (warns []string, errors []error) {
                     v := val.(int)
                     if v > 3 || v < 0 {
@@ -50,10 +46,9 @@ func resourceDiscordServer() *schema.Resource {
                 },
             },
             "explicit_content_filter": {
-                Type:        schema.TypeInt,
-                Optional:    true,
-                Default:     0,
-                Description: descriptions["discord_resource_server_explicit_content_filter"],
+                Type:     schema.TypeInt,
+                Optional: true,
+                Default:  0,
                 ValidateFunc: func(val interface{}, key string) (warns []string, errors []error) {
                     v := val.(int)
                     if v > 2 || v < 0 {
@@ -64,10 +59,9 @@ func resourceDiscordServer() *schema.Resource {
                 },
             },
             "default_message_notifications": {
-                Type:        schema.TypeInt,
-                Optional:    true,
-                Default:     0,
-                Description: descriptions["discord_resource_server_default_message_notifications"],
+                Type:     schema.TypeInt,
+                Optional: true,
+                Default:  0,
                 ValidateFunc: func(val interface{}, key string) (warns []string, errors []error) {
                     v := val.(int)
                     if v != 0 && v != 1 {
@@ -78,15 +72,13 @@ func resourceDiscordServer() *schema.Resource {
                 },
             },
             "afk_channel_id": {
-                Type:        schema.TypeString,
-                Optional:    true,
-                Description: descriptions["discord_resource_server_afk_channel_id"],
+                Type:     schema.TypeString,
+                Optional: true,
             },
             "afk_timeout": {
-                Type:        schema.TypeInt,
-                Optional:    true,
-                Default:     300,
-                Description: descriptions["discord_resource_server_afk_timeout"],
+                Type:     schema.TypeInt,
+                Optional: true,
+                Default:  300,
                 ValidateFunc: func(val interface{}, key string) (warns []string, errors []error) {
                     v := val.(int)
                     if v < 0 {
@@ -97,44 +89,36 @@ func resourceDiscordServer() *schema.Resource {
                 },
             },
             "icon_url": {
-                Type:        schema.TypeString,
-                Optional:    true,
-                Description: descriptions["discord_resource_server_icon_url"],
+                Type:     schema.TypeString,
+                Optional: true,
             },
             "icon_data_uri": {
-                Type:        schema.TypeString,
-                Optional:    true,
-                Description: descriptions["discord_resource_server_icon_data_uri"],
+                Type:     schema.TypeString,
+                Optional: true,
             },
             "icon_hash": {
-                Type:        schema.TypeString,
-                Computed:    true,
-                Description: descriptions["discord_resource_server_icon_hash"],
+                Type:     schema.TypeString,
+                Computed: true,
             },
             "splash_url": {
-                Type:        schema.TypeString,
-                Optional:    true,
-                Description: descriptions["discord_resource_server_splash_url"],
+                Type:     schema.TypeString,
+                Optional: true,
             },
             "splash_data_uri": {
-                Type:        schema.TypeString,
-                Optional:    true,
-                Description: descriptions["discord_resource_server_splash_data_uri"],
+                Type:     schema.TypeString,
+                Optional: true,
             },
             "splash_hash": {
-                Type:        schema.TypeString,
-                Computed:    true,
-                Description: descriptions["discord_resource_server_splash_hash"],
+                Type:     schema.TypeString,
+                Computed: true,
             },
             "owner_id": {
-                Type:        schema.TypeString,
-                Optional:    true,
-                Description: descriptions["discord_resource_server_owner_id"],
+                Type:     schema.TypeString,
+                Optional: true,
             },
             "system_channel_id": {
-                Type:        schema.TypeString,
-                Optional:    true,
-                Description: descriptions["discord_resource_server_system_channel_id"],
+                Type:     schema.TypeString,
+                Optional: true,
             },
         },
     }
@@ -234,7 +218,6 @@ func resourceServerRead(ctx context.Context, d *schema.ResourceData, m interface
         return diag.Errorf("Error fetching server: %s", err.Error())
     }
 
-
     d.Set("name", server.Name)
     d.Set("region", server.Region)
     d.Set("default_message_notifications", server.DefaultMessageNotifications)
@@ -272,7 +255,6 @@ func resourceServerUpdate(ctx context.Context, d *schema.ResourceData, m interfa
         return diag.Errorf("Error fetching server: %s", err.Error())
     }
 
-
     builder := client.UpdateGuild(ctx, server.ID)
     edit := false
 
@@ -290,7 +272,7 @@ func resourceServerUpdate(ctx context.Context, d *schema.ResourceData, m interfa
     }
     if d.HasChange("splash_data_uri") {
         builder.SetIcon(d.Get("splash_data_uri").(string))
-       edit = true
+        edit = true
     }
     if d.HasChange("afk_channel_id") {
         builder.SetAfkChannelID(disgord.ParseSnowflakeString(d.Get("afk_channel_id").(string)))

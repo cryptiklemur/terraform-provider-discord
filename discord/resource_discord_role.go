@@ -1,13 +1,11 @@
 package discord
 
 import (
-    context2 "context"
     "fmt"
     "github.com/andersfylling/disgord"
     "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
     "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
     "golang.org/x/net/context"
-    "log"
 )
 
 func resourceDiscordRole() *schema.Resource {
@@ -22,50 +20,44 @@ func resourceDiscordRole() *schema.Resource {
 
         Schema: map[string]*schema.Schema{
             "server_id": {
-                Type:        schema.TypeString,
-                Required:    true,
-                ForceNew:    true,
-                Description: descriptions["discord_resource_role_server"],
+                Type:     schema.TypeString,
+                Required: true,
+                ForceNew: true,
             },
             "name": {
-                Type:        schema.TypeString,
-                Required:    true,
-                ForceNew:    false,
-                Description: descriptions["discord_resource_role_name"],
+                Type:     schema.TypeString,
+                Required: true,
+                ForceNew: false,
             },
             "permissions": {
-                Type:        schema.TypeInt,
-                Optional:    true,
-                Default:     0,
-                ForceNew:    false,
-                Description: descriptions["discord_resource_role_permissions"],
+                Type:     schema.TypeInt,
+                Optional: true,
+                Default:  0,
+                ForceNew: false,
             },
             "color": {
-                Type:        schema.TypeInt,
-                Optional:    true,
-                ForceNew:    false,
-                Description: descriptions["discord_resource_role_color"],
+                Type:     schema.TypeInt,
+                Optional: true,
+                ForceNew: false,
             },
             "hoist": {
-                Type:        schema.TypeBool,
-                Optional:    true,
-                Default:     false,
-                ForceNew:    false,
-                Description: descriptions["discord_resource_role_hoist"],
+                Type:     schema.TypeBool,
+                Optional: true,
+                Default:  false,
+                ForceNew: false,
             },
             "mentionable": {
-                Type:        schema.TypeBool,
-                Optional:    true,
-                Default:     false,
-                ForceNew:    false,
-                Description: descriptions["discord_resource_role_mentionable"],
+                Type:     schema.TypeBool,
+                Optional: true,
+                Default:  false,
+                ForceNew: false,
             },
             "position": {
-                Type:        schema.TypeInt,
-                Optional:    true,
-                Default:     1,
-                ForceNew:    false,
-                Description: descriptions["discord_resource_role_position"],
+                Type:     schema.TypeInt,
+                Optional: true,
+                Default:  1,
+                ForceNew: false,
+
                 ValidateFunc: func(val interface{}, key string) (warns []string, errors []error) {
                     v := val.(int)
 
@@ -77,15 +69,14 @@ func resourceDiscordRole() *schema.Resource {
                 },
             },
             "managed": {
-                Type:        schema.TypeBool,
-                Computed:    true,
-                Description: descriptions["discord_resource_role_managed"],
+                Type:     schema.TypeBool,
+                Computed: true,
             },
         },
     }
 }
 
-func resourceRoleImport(ctx context2.Context, data *schema.ResourceData, i interface{}) ([]*schema.ResourceData, error) {
+func resourceRoleImport(ctx context.Context, data *schema.ResourceData, i interface{}) ([]*schema.ResourceData, error) {
     serverId, roleId, err := getBothIds(data.Id())
     if err != nil {
         return nil, err
@@ -118,22 +109,27 @@ func resourceRoleCreate(ctx context.Context, d *schema.ResourceData, m interface
         return diag.Errorf("Failed to create role for %s: %s", serverId.String(), err.Error())
     }
 
-    var orderList []disgord.UpdateGuildRolePositionsParams
-    newPosition, oldPosition := d.GetChange("position")
-
-    for _, r := range server.Roles {
-        // newPosition = len(server.Roles) + newPosition.(int)
-        if len(server.Roles)-r.Position == newPosition {
-            orderList = append(orderList, disgord.UpdateGuildRolePositionsParams{ID: r.ID, Position: oldPosition.(int)})
-            orderList = append(orderList, disgord.UpdateGuildRolePositionsParams{ID: role.ID, Position: newPosition.(int)})
-            break
+    if newPosition, ok := d.GetOk("position"); ok {
+        var oldRole *disgord.Role
+        for _, r := range server.Roles {
+            if r.Position == newPosition.(int) {
+                oldRole = r
+                break
+            }
         }
-    }
-    _, err = client.UpdateGuildRolePositions(ctx, serverId, orderList)
-    if err != nil {
-        diags = append(diags, diag.Errorf("Failed to re-order roles: %s", err.Error())...)
-    } else {
-        d.Set("position", len(server.Roles) - role.Position)
+        if oldRole == nil {
+            return diag.Errorf("New Role position is out of bounds: %d", newPosition.(int))
+        }
+
+        _, err := client.UpdateGuildRolePositions(ctx, serverId, []disgord.UpdateGuildRolePositionsParams{
+            {ID: oldRole.ID, Position: role.Position},
+            {ID: role.ID, Position: newPosition.(int)},
+        })
+        if err != nil {
+            diags = append(diags, diag.Errorf("Failed to re-order roles: %s", err.Error())...)
+        } else {
+            d.Set("position", newPosition)
+        }
     }
 
     d.SetId(role.ID.String())
@@ -159,7 +155,7 @@ func resourceRoleRead(ctx context.Context, d *schema.ResourceData, m interface{}
     }
 
     d.Set("name", role.Name)
-    d.Set("position", len(server.Roles)-role.Position)
+    d.Set("position", role.Position)
     d.Set("color", role.Color)
     d.Set("hoist", role.Hoist)
     d.Set("mentionable", role.Mentionable)
@@ -180,24 +176,32 @@ func resourceRoleUpdate(ctx context.Context, d *schema.ResourceData, m interface
     }
 
     roleId := getId(d.Id())
+    role, err := server.Role(roleId)
+    if err != nil {
+        return diag.Errorf("Failed to fetch role %s: %s", d.Id(), err.Error())
+    }
 
     if d.HasChange("position") {
-        var orderList []disgord.UpdateGuildRolePositionsParams
-        oldPosition, newPosition := d.GetChange("position")
-
-        for _, role := range server.Roles {
-            // newPosition = len(server.Roles) + newPosition.(int)
-            if len(server.Roles)-role.Position == newPosition {
-                log.Printf("Moving %s from %d to %d", role.Name, oldPosition.(int), newPosition.(int))
-                // orderList = append(orderList, disgord.UpdateGuildRolePositionsParams{ID: role.ID, Position: oldPosition.(int)})
-                orderList = append(orderList, disgord.UpdateGuildRolePositionsParams{ID: roleId, Position: newPosition.(int)})
+        _, newPosition := d.GetChange("position")
+        var oldRole *disgord.Role
+        for _, r := range server.Roles {
+            if r.Position == newPosition.(int) {
+                oldRole = r
                 break
             }
         }
+        if oldRole == nil {
+            return diag.Errorf("New Role position is out of bounds: %d", newPosition.(int))
+        }
 
-        _, err = client.UpdateGuildRolePositions(ctx, serverId, orderList)
+        _, err := client.UpdateGuildRolePositions(ctx, serverId, []disgord.UpdateGuildRolePositionsParams{
+            {ID: oldRole.ID, Position: role.Position},
+            {ID: roleId, Position: newPosition.(int)},
+        })
         if err != nil {
-            return diag.Errorf("Failed to re-order roles: %s", err.Error())
+            diags = append(diags, diag.Errorf("Failed to re-order roles: %s", err.Error())...)
+        } else {
+            d.Set("position", newPosition)
         }
     }
 
@@ -209,15 +213,15 @@ func resourceRoleUpdate(ctx context.Context, d *schema.ResourceData, m interface
     }
     builder.SetHoist(d.Get("hoist").(bool))
     builder.SetMentionable(d.Get("mentionable").(bool))
-    builder.SetPermissions(uint64(d.Get("permissions").(int)))
+    builder.SetPermissions(disgord.PermissionBit(d.Get("permissions").(int)))
 
-    role, err := builder.Execute()
+    role, err = builder.Execute()
     if err != nil {
         return diag.Errorf("Failed to update role %s: %s", d.Id(), err.Error())
     }
 
     d.Set("name", role.Name)
-    d.Set("position", len(server.Roles)-role.Position)
+    d.Set("position", role.Position)
     d.Set("color", role.Color)
     d.Set("hoist", role.Hoist)
     d.Set("mentionable", role.Mentionable)

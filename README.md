@@ -2,35 +2,27 @@
 
 ## Resources
 
-* discord_channel
+* discord_category_channel
+* discord_channel_permission
 * discord_invite
+* discord_member_roles
 * discord_message
 * discord_role
+* discord_role_everyone
 * discord_server
-* discord_server_member
+* discord_text_channel
+* discord_voice_channel
 
 ## Data
 
+* discord_color
+* discord_local_image
+* discord_permission
+
 ## Todo
 
-* data.discord_permission
+#### Data Sources
 
-    ```hcl-terraform
-    data discord_permission allow {
-        manage_channel = "allow"
-        read_channel = "unset"
-        add_reaction = "deny"
-    }  
-    ```
-
-* resource.discord_channel_permission (Permission Overwrides)
-    
-    ```hcl-terraform
-    resource discord_channel_permission everyone {
-        channel_id = discord_channel.rules.id
-        type = "role"
-        role_id = discord_server.test.everyone_role_id
-        allow = data.discord_permissions.allow.bits
-        deny = data.discord_permissions.deny.bits
-    }
-    ```
+* discord_category_channel
+* discord_text_channel
+* discord_voice_channel

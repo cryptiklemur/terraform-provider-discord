@@ -5,21 +5,8 @@ import (
     "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
     "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
     "github.com/polds/imgbase64"
-    "hash/crc32"
     "strconv"
 )
-
-func Hashcode(s string) int {
-    v := int(crc32.ChecksumIEEE([]byte(s)))
-    if v >= 0 {
-        return v
-    }
-    if -v >= 0 {
-        return -v
-    }
-    // v == MinInt
-    return 0
-}
 
 func dataSourceDiscordLocalImage() *schema.Resource {
     return &schema.Resource{
@@ -30,7 +17,7 @@ func dataSourceDiscordLocalImage() *schema.Resource {
                 Required: true,
             },
             "data_uri": {
-                Type: schema.TypeString,
+                Type:     schema.TypeString,
                 Computed: true,
             },
         },
