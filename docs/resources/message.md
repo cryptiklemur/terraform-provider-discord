@@ -89,3 +89,7 @@ Details on arguments can be found [here](https://discord.com/developers/docs/res
 * `author` ID of the user who wrote the message
 * `timestamp` When the message was sent
 * `edited_timestamp` When the message was edited
+* `type` The type of the message
+
+The following blocks under `embed` will also have a `proxy_url`: `image`, `thumbnail`
+The following blocks under `embed` will also have a `proxy_icon_url`: `author`
