@@ -7,7 +7,6 @@ import (
     "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
     "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
     "golang.org/x/net/context"
-    "log"
     "strings"
 )
 
@@ -213,7 +212,6 @@ func resourceChannelRead(ctx context.Context, d *schema.ResourceData, m interfac
             }
 
             synced := arePermissionsSynced(channel, parent)
-            log.Printf("Are permissions synced between %s and %s: %s", channel.Name, parent.Name, synced)
             d.Set("sync_perms_with_category", synced)
         } else {
             d.Set("sync_perms_with_category", false)
