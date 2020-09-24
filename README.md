@@ -1,5 +1,7 @@
 # Discord Terraform Provider
 
+https://registry.terraform.io/providers/aequasi/discord/latest
+
 ## Resources
 
 * discord_category_channel
