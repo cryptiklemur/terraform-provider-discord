@@ -1,0 +1,24 @@
+{
+  "nixpkgs": {
+    "date": "2020-09-07T21:29:51+01:00",
+    "deepClone": false,
+    "fetchSubmodules": false,
+    "leaveDotGit": false,
+    "path": "/nix/store/k4zscsab1gc8ymg0khfpz5fjzh34fq0k-nixpkgs-channels",
+    "ref": "nixos-unstable",
+    "rev": "61525137fd1002f6f2a5eb0ea27d480713362cd5",
+    "sha256": "1gzwz9jvfcf0is6zma7qlgszkngfb2aa4kam0nhs0qnwb4nqn7mg",
+    "url": "https://github.com/NixOS/nixpkgs-channels"
+  },
+  "omgpkgs": {
+    "date": "2020-08-31T15:16:05-04:00",
+    "deepClone": false,
+    "fetchSubmodules": false,
+    "leaveDotGit": false,
+    "path": "/nix/store/qk3jz8knaswfa3gnz78fhsrqjyq9as25-omgpkgs",
+    "ref": "master",
+    "rev": "ae4627ced8c3b82e2d8218fb695dae8469649fcf",
+    "sha256": "0nz4966dimcvv08v86466w133s25hsz27lsvm25rzqb8si0knin5",
+    "url": "https://github.com/PlayOneMoreGame/omgpkgs.git"
+  }
+}

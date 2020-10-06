@@ -1,3 +1,4 @@
 release.sh
 dist
 terraform-provider-discord
+.direnv
