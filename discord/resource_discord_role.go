@@ -118,13 +118,15 @@ func resourceRoleCreate(ctx context.Context, d *schema.ResourceData, m interface
             }
         }
         if oldRole == nil {
-            return diag.Errorf("New Role position is out of bounds: %d", newPosition.(int))
+            _, err = client.UpdateGuildRolePositions(ctx, serverId, []disgord.UpdateGuildRolePositionsParams{
+                {ID: role.ID, Position: newPosition.(int)},
+            })
+        } else {
+            _, err = client.UpdateGuildRolePositions(ctx, serverId, []disgord.UpdateGuildRolePositionsParams{
+                {ID: oldRole.ID, Position: role.Position},
+                {ID: role.ID, Position: newPosition.(int)},
+            })
         }
-
-        _, err := client.UpdateGuildRolePositions(ctx, serverId, []disgord.UpdateGuildRolePositionsParams{
-            {ID: oldRole.ID, Position: role.Position},
-            {ID: role.ID, Position: newPosition.(int)},
-        })
         if err != nil {
             diags = append(diags, diag.Errorf("Failed to re-order roles: %s", err.Error())...)
         } else {
@@ -191,13 +193,15 @@ func resourceRoleUpdate(ctx context.Context, d *schema.ResourceData, m interface
             }
         }
         if oldRole == nil {
-            return diag.Errorf("New Role position is out of bounds: %d", newPosition.(int))
+            _, err = client.UpdateGuildRolePositions(ctx, serverId, []disgord.UpdateGuildRolePositionsParams{
+                {ID: roleId, Position: newPosition.(int)},
+            })
+        } else {
+            _, err = client.UpdateGuildRolePositions(ctx, serverId, []disgord.UpdateGuildRolePositionsParams{
+                {ID: oldRole.ID, Position: role.Position},
+                {ID: roleId, Position: newPosition.(int)},
+            })
         }
-
-        _, err := client.UpdateGuildRolePositions(ctx, serverId, []disgord.UpdateGuildRolePositionsParams{
-            {ID: oldRole.ID, Position: role.Position},
-            {ID: roleId, Position: newPosition.(int)},
-        })
         if err != nil {
             diags = append(diags, diag.Errorf("Failed to re-order roles: %s", err.Error())...)
         } else {
