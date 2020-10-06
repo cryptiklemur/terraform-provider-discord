@@ -38,8 +38,8 @@ func resourceDiscordServer() *schema.Resource {
                 Default:  0,
                 ValidateFunc: func(val interface{}, key string) (warns []string, errors []error) {
                     v := val.(int)
-                    if v > 3 || v < 0 {
-                        errors = append(errors, fmt.Errorf("verification_level must be between 0 and 3 inclusive, got: %d", v))
+                    if v > 4 || v < 0 {
+                        errors = append(errors, fmt.Errorf("verification_level must be between 0 and 4 inclusive, got: %d", v))
                     }
 
                     return
