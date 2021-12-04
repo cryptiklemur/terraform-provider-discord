@@ -1,8 +1,8 @@
 .ONESHELL:
 .DEFAULT_GOAL := list
-VERSION := 5
+VERSION := 6
 ROOT_DIR := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
-DEPLOY_DIR := $(HOME)/.terraform.d/plugins/onemoregame.com/terraform/discord/0.0.$(VERSION)/linux_amd64
+DEPLOY_DIR := $(HOME)/.terraform.d/plugins/barrettclark/terraform/discord/0.0.$(VERSION)/linux_amd64
 
 
 # https://stackoverflow.com/a/26339924/11547115
