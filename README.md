@@ -14,6 +14,7 @@ https://registry.terraform.io/providers/aequasi/discord/latest
 * discord_server
 * discord_text_channel
 * discord_voice_channel
+* discord_news_channel
 
 ## Data
 
