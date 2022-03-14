@@ -1,0 +1,43 @@
+name: GoReleaser
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - 'v*.*.*'
+    paths:
+      - ".github/workflows/goreleaser.yml"
+      - ".goreleaser.yml"
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - name: Lint GoReleaser
+        uses: goreleaser/goreleaser-action@v2
+        if: ${{ env.GPG_FINGERPRINT == '' }}
+        with:
+          version: latest
+          args: release --skip-sign
+
+      - name: Release with GoReleaser
+        uses: goreleaser/goreleaser-action@v2
+        if: ${{ env.GPG_FINGERPRINT != '' }}
+        with:
+          version: latest
+          args: release

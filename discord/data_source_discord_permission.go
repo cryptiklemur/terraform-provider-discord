@@ -10,10 +10,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-var permissions map[string]int
+var permissions map[string]int64
 
 func dataSourceDiscordPermission() *schema.Resource {
-	permissions = map[string]int{
+	permissions = map[string]int64{
 		"create_instant_invite":  0x00000001,
 		"kick_members":           0x00000002,
 		"ban_members":            0x00000004,
@@ -97,8 +97,8 @@ func dataSourceDiscordPermission() *schema.Resource {
 func dataSourceDiscordPermissionRead(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	var allowBits int
-	var denyBits int
+	var allowBits int64
+	var denyBits int64
 	for perm, bit := range permissions {
 		v := d.Get(perm).(string)
 		if v == "allow" {
@@ -110,8 +110,8 @@ func dataSourceDiscordPermissionRead(_ context.Context, d *schema.ResourceData, 
 	}
 
 	d.SetId(strconv.Itoa(Hashcode(fmt.Sprintf("%d:%d", allowBits, denyBits))))
-	d.Set("allow_bits", allowBits|(d.Get("allow_extends").(int)))
-	d.Set("deny_bits", denyBits|(d.Get("deny_extends").(int)))
+	d.Set("allow_bits", allowBits|(d.Get("allow_extends").(int64)))
+	d.Set("deny_bits", denyBits|(d.Get("deny_extends").(int64)))
 
 	return diags
 }
