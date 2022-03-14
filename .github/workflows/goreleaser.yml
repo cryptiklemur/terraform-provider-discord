@@ -11,7 +11,7 @@ on:
       - ".goreleaser.yml"
   pull_request:
     branches:
-      - main
+      - master
 
 jobs:
   goreleaser:
