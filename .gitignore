@@ -1,3 +1,4 @@
+.idea/
 release.sh
 dist
 terraform-provider-discord
